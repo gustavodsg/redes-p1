@@ -16,7 +16,16 @@ def sair(conexao):
 def dados_recebidos(conexao, dados):
     if dados == b'':
         return sair(conexao)
-    print(conexao, dados)
+    # Converte os dados em uma string
+    mensagem = dados.decode('utf-8')
+    
+    # Verifica se a mensagem é um PING
+    if mensagem.startswith('PING'):
+        payload = mensagem[5:]  # Remove 'PING ' do início da mensagem
+        resposta = f':server PONG server :{payload}\r\n'
+        conexao.enviar(resposta.encode('utf-8'))
+    else:
+        print(conexao, mensagem)
 
 
 def conexao_aceita(conexao):
