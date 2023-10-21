@@ -42,12 +42,18 @@ def mensagens(conexao, linha):
     # Remove espaços do começo e do final da string
     linha = linha.strip()
         
-    ''' Verifica se as 4 primeiras letras da linha é 'PING',
+    ''' Verifica se as 4 primeiras letras da linha é 'PING', 'NICK', etc,
     indiferente de maiúscula ou minúscula. '''
     if linha[0:4].upper() == b'PING':
-        conexao.enviar(b':server PONG server :'+linha.split(b' ',1)[1]+b'\r\n')
-    elif linha[0:4].upper() == b'NiCK':
-        nick = {}
+        conexao.enviar(b':server PONG server :%s\r\n' % linha.split(b' ',1)[1])
+    elif linha[0:4].upper() == b'NICK':
+        comando, nome = linha.split(b' ',1)
+        if validar_nome(nome):
+            conexao.enviar(b':server 001 %s :Welcome\r\n' % nome)
+            conexao.enviar(b':server 422 %s :MOTD File is missing\r\n' % nome)
+        else:
+            conexao.enviar(b':server 432 * %s :Erroneous nickname\r\n' % nome)
+
     
         
 
