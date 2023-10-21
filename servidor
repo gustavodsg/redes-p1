@@ -4,6 +4,7 @@ from tcp import Servidor
 from tcp import Conexao
 import re
 
+# Define o atributo global dados_residuais para a classe Conexao
 Conexao.dados_residuais = b''
 
 def validar_nome(nome):
@@ -19,13 +20,18 @@ def dados_recebidos(conexao, dados):
     if dados == b'':
         return sair(conexao)
     
+    # Concatena os dados residuais com os dados
     dados = Conexao.dados_residuais + dados
     
+    # Cria uma lista para armazenar linhas terminadas em b'\r\n'
     linhas = dados.split(b'\r\n')
 
+    # Se o último elemento da lista terminar com b'\r\n'
     if linhas[-1].endswith(b'\r\n'):
+        # Caso não tenha dados residuais
         Conexao.dados_residuais = b''
     else:
+        # Caso tenha dados residuais atribuí-lo a variável e removê-lo da lista
         Conexao.dados_residuais = linhas.pop(-1)
 
     for linha in linhas:
