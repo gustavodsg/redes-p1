@@ -19,14 +19,9 @@ def dados_recebidos(conexao, dados):
     if dados == b'':
         return sair(conexao)
     
-    linhas = []
-    #global Conexao.dados_residuais
-    if dados.startswith((b'PING', b'NICK', b'PRIVMSG', b'JOIN', b'PART')):
-        linha = dados
-    else:
-        linha = Conexao.dados_residuais + dados
+    dados = Conexao.dados_residuais + dados
     
-    linhas = linha.split(b'\r\n')
+    linhas = dados.split(b'\r\n')
 
     if linhas[-1].endswith(b'\r\n'):
         Conexao.dados_residuais = b''
