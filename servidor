@@ -10,6 +10,9 @@ Conexao.dados_residuais = b''
 # Define o atributo global nicks para a classe Conexao
 Conexao.nicks = {}
 
+# Define o atributo global canais para a classe Conexao
+Conexao.canais = {}
+
 def validar_nome(nome):
     return re.match(br'^[a-zA-Z][a-zA-Z0-9_-]*$', nome) is not None
 
@@ -45,11 +48,11 @@ def processar_linha(conexao, linha):
     # Remove espaços do começo e do final da string
     linha = linha.strip()
         
-    ''' Verifica se as 4 primeiras letras da linha é 'PING', 'NICK', etc,
-    indiferente de maiúscula ou minúscula. '''
+    ''' Verifica se as primeiras letras da linha é um comando
+    indiferente de maiúsculas ou minúsculas. '''
     # PING
     if linha[0:4].upper() == b'PING':
-        conexao.enviar(b':server PONG server :%s\r\n' % linha.split(b' ',1)[1])
+        conexao.enviar(b':server PONG server :%s\r\n' % linha.split()[1])
     # NICK
     elif linha[0:4].upper() == b'NICK':
         # Atribui a variável nome ao nick enviado
@@ -76,6 +79,30 @@ def processar_linha(conexao, linha):
         # Se nome for inválido
         else:
             conexao.enviar(b':server 432 * %s :Erroneous nickname\r\n' % nome)
+    # PRIVMSG
+    elif linha[0:7].upper() == b'PRIVMSG':
+        # Pegar o nome de quem envia a mensagem privada
+        transmissor = Conexao.nicks[conexao].lower()
+        # Pegar o nome de quem vai receber a mensagem e a mensagem
+        receptor, mensagem = linha.split()[1:]
+        receptor = receptor.lower()
+        if receptor.startswith(b'#'):
+            canal = receptor[1:]
+            # Achar a conexao associada ao nome
+            for conexao, nome in Conexao.canais.items():
+                if nome == canal:
+                    # Envia mensagem
+                    conexao.enviar(b':%s PRIVMSG %s %s\r\n' % (transmissor, canal, mensagem))
+            conexao.enviar(b':%s PRIVMSG %s %s\r\n' % (transmissor, canal, mensagem))
+        elif receptor in Conexao.nicks.values():
+            # Achar a conexao associada ao nome
+            for conexao, nome in Conexao.nicks.items():
+                if nome == receptor:
+                    # Envia mensagem
+                    conexao.enviar(b':%s PRIVMSG %s %s\r\n' % (transmissor, receptor, mensagem))
+    # JOIN
+    
+        
 
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
