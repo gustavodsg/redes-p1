@@ -7,6 +7,9 @@ import re
 # Define o atributo global dados_residuais para a classe Conexao
 Conexao.dados_residuais = b''
 
+# Define o atributo global nicks para a classe Conexao
+Conexao.nicks = {}
+
 def validar_nome(nome):
     return re.match(br'^[a-zA-Z][a-zA-Z0-9_-]*$', nome) is not None
 
@@ -36,34 +39,47 @@ def dados_recebidos(conexao, dados):
 
     for linha in linhas:
         print(conexao, linha)
-        mensagens(conexao, linha)
+        processar_linha(conexao, linha)
     
-def mensagens(conexao, linha):
+def processar_linha(conexao, linha):
     # Remove espaços do começo e do final da string
     linha = linha.strip()
         
     ''' Verifica se as 4 primeiras letras da linha é 'PING', 'NICK', etc,
     indiferente de maiúscula ou minúscula. '''
+    # PING
     if linha[0:4].upper() == b'PING':
         conexao.enviar(b':server PONG server :%s\r\n' % linha.split(b' ',1)[1])
+    # NICK
     elif linha[0:4].upper() == b'NICK':
-        comando, nome = linha.split(b' ',1)
+        # Atribui a variável nome ao nick enviado
+        nome = linha.split(b' ',1)[1]
+        # Se nome for válido
         if validar_nome(nome):
-            conexao.enviar(b':server 001 %s :Welcome\r\n' % nome)
-            conexao.enviar(b':server 422 %s :MOTD File is missing\r\n' % nome)
+            # Verifica se o dicionário está vazio
+            nome_anterior = Conexao.nicks.get(conexao)
+            # Se estiver vazio atribui b'*' a variável nome_anterior
+            if nome_anterior is None:
+                nome_anterior = b'*'
+            # Verifica se o nome já está em uso
+            if nome.lower() in Conexao.nicks.values():
+                conexao.enviar(b':server 433 %s %s :Nickname is already in use\r\n' % (nome_anterior, nome))
+            # Se o nome não estiver em uso 
+            elif nome_anterior == b'*':
+                conexao.enviar(b':server 001 %s :Welcome\r\n' % nome)
+                conexao.enviar(b':server 422 %s :MOTD File is missing\r\n' % nome)
+                Conexao.nicks[conexao] = nome.lower()
+            # Trocar nome
+            else:
+                Conexao.nicks[conexao] = nome.lower()
+                conexao.enviar(b':%s NICK %s\r\n' % (nome_anterior, nome))
+        # Se nome for inválido
         else:
             conexao.enviar(b':server 432 * %s :Erroneous nickname\r\n' % nome)
-
-    
-        
-
 
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
     conexao.registrar_recebedor(dados_recebidos)
-
-    
-
 
 servidor = Servidor(6667)
 servidor.registrar_monitor_de_conexoes_aceitas(conexao_aceita)
