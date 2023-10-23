@@ -8,10 +8,10 @@ import re
 Conexao.dados_residuais = b''
 
 # Define o atributo global nicks para a classe Conexao
-apelidos = {}
+Conexao.apelidos = {}
 
 # Define o atributo global canais para a classe Conexao
-canais = {}
+Conexao.canais = {}
 
 def validar_nome(nome):
     return re.match(br'^[a-zA-Z][a-zA-Z0-9_-]*$', nome) is not None
@@ -60,21 +60,21 @@ def processar_linha(conexao, linha):
         # Se nome for válido
         if validar_nome(nome):
             # Verifica se o dicionário está vazio
-            nome_anterior = apelidos.get(conexao)
+            nome_anterior = Conexao.apelidos.get(conexao)
             # Se estiver vazio atribui b'*' a variável nome_anterior
             if nome_anterior is None:
                 nome_anterior = b'*'
             # Verifica se o nome já está em uso
-            if nome.lower() in apelidos.values():
+            if nome.lower() in Conexao.apelidos.values():
                 enviar_e_imprimir(conexao, b':server 433 %s %s :Nickname is already in use\r\n' % (nome_anterior, nome))
             # Se o nome não estiver em uso 
             elif nome_anterior == b'*':
                 enviar_e_imprimir(conexao, b':server 001 %s :Welcome\r\n' % nome)
                 enviar_e_imprimir(conexao, b':server 422 %s :MOTD File is missing\r\n' % nome)
-                apelidos[conexao] = nome.lower()
+                Conexao.apelidos[conexao] = nome.lower()
             # Trocar nome
             else:
-                apelidos[conexao] = nome.lower()
+                Conexao.apelidos[conexao] = nome.lower()
                 enviar_e_imprimir(conexao, b':%s NICK %s\r\n' % (nome_anterior, nome))
         # Se nome for inválido
         else:
@@ -82,7 +82,7 @@ def processar_linha(conexao, linha):
     # PRIVMSG
     elif linha[0:7].upper() == b'PRIVMSG':
         # Atribui o nome de quem envia a mensagem privada
-        transmissor = apelidos[conexao].lower()
+        transmissor = Conexao.apelidos[conexao].lower()
         # Atribui o nome de quem vai receber a mensagem e a mensagem
         receptor, mensagem = linha.split()[1:]
         receptor = receptor.lower()
@@ -91,15 +91,15 @@ def processar_linha(conexao, linha):
             # Remove o b'#'
             canal = receptor[1:]
             # Achar a conexao associada ao nome
-            for con in canais[canal]:
-                print(con)
-                if (con != conexao):
+            for c in Conexao.canais[canal]:
+                # Não manda a mensagem para quem a enviou
+                if(c != conexao):
                     # Envia mensagem
-                    enviar_e_imprimir(con, b':%s PRIVMSG #%s %s\r\n' % (transmissor, canal, mensagem))
+                    enviar_e_imprimir(c, b':%s PRIVMSG #%s %s\r\n' % (transmissor, canal, mensagem))
         # Mensagem privada para usuário
-        elif receptor in apelidos.values():
+        elif receptor in Conexao.apelidos.values():
             # Achar a conexao associada ao nome
-            for conexao, nome in apelidos.items():
+            for conexao, nome in Conexao.apelidos.items():
                 if nome == receptor:
                     # Envia mensagem
                     enviar_e_imprimir(conexao, b':%s PRIVMSG %s %s\r\n' % (transmissor, receptor, mensagem))
@@ -107,9 +107,19 @@ def processar_linha(conexao, linha):
     elif linha[0:4].upper() == b'JOIN':
         canal = linha.split()[1][1:]
         if validar_nome(canal):
-            canais[canal] = {}
-            canais[canal][conexao] = apelidos[conexao]
-            enviar_e_imprimir(conexao, b':%s JOIN :#%s\r\n' % (apelidos[conexao], canal))
+            if Conexao.canais.get(canal) is None:
+                Conexao.canais[canal] = {}
+            Conexao.canais[canal][conexao] = Conexao.apelidos[conexao]
+            enviar_e_imprimir(conexao, b':%s JOIN :#%s\r\n' % (Conexao.apelidos[conexao], canal))
+        else:
+            enviar_e_imprimir(conexao, b':server 403 %s :No such channel\r\n' % canal)
+    # PART
+    elif linha[0:4].upper() == b'PART':
+        canal = linha.split()[1][1:]
+        if validar_nome(canal):
+            for c in Conexao.canais[canal]:
+                enviar_e_imprimir(c, b':%s PART #%s\r\n' % (Conexao.apelidos[conexao], canal))
+            Conexao.canais[canal].pop(conexao)
         else:
             enviar_e_imprimir(conexao, b':server 403 %s :No such channel\r\n' % canal)
 
