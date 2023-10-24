@@ -18,6 +18,12 @@ def validar_nome(nome):
 
 
 def sair(conexao):
+    for canal in Conexao.canais:
+        if conexao in Conexao.canais[canal]:
+            conexao.enviar(b':%s QUIT :Connection closed\r\n' % Conexao.apelidos[conexao])
+            Conexao.canais[canal].pop(conexao)
+    if Conexao.apelidos.get(conexao) is not None:
+        Conexao.apelidos.pop(conexao)
     print(conexao, 'conexão fechada')
     conexao.fechar()
 
